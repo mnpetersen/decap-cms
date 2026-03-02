@@ -183,8 +183,11 @@ function getConfigSchema() {
       },
       publish_mode: {
         type: 'string',
-        enum: ['simple', 'editorial_workflow', ''],
+        enum: ['simple', 'editorial_workflow', 'one_preview', ''],
         examples: ['editorial_workflow'],
+      },
+      preview_branch: {
+        type: 'string',
       },
       slug: {
         type: 'object',

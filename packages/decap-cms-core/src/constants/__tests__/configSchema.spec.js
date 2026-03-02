@@ -538,6 +538,36 @@ describe('config', () => {
       }).not.toThrow();
     });
 
+    describe('one_preview publish mode', () => {
+      it('should not throw if publish_mode is one_preview', () => {
+        expect(() => {
+          validateConfig({ ...validConfig, publish_mode: 'one_preview' });
+        }).not.toThrowError();
+      });
+
+      it('should not throw if publish_mode is one_preview with preview_branch', () => {
+        expect(() => {
+          validateConfig({
+            ...validConfig,
+            publish_mode: 'one_preview',
+            preview_branch: 'preview',
+          });
+        }).not.toThrowError();
+      });
+
+      it('should throw if publish_mode is an invalid value', () => {
+        expect(() => {
+          validateConfig({ ...validConfig, publish_mode: 'invalid_mode' });
+        }).toThrowError("'publish_mode' must be equal to one of the allowed values");
+      });
+
+      it('should not throw if preview_branch is a string', () => {
+        expect(() => {
+          validateConfig({ ...validConfig, preview_branch: 'my-preview-branch' });
+        }).not.toThrowError();
+      });
+    });
+
     describe('i18n', () => {
       it('should throw error when locale has invalid characters', () => {
         expect(() => {
