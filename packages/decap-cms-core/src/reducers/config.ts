@@ -1,7 +1,7 @@
 import { produce } from 'immer';
 
 import { CONFIG_REQUEST, CONFIG_SUCCESS, CONFIG_FAILURE } from '../actions/config';
-import { EDITORIAL_WORKFLOW } from '../constants/publishModes';
+import { EDITORIAL_WORKFLOW, ONE_PREVIEW } from '../constants/publishModes';
 
 import type { ConfigAction } from '../actions/config';
 import type { CmsConfig } from '../types/redux';
@@ -33,6 +33,14 @@ export function selectLocale(state: CmsConfig) {
 
 export function selectUseWorkflow(state: CmsConfig) {
   return state.publish_mode === EDITORIAL_WORKFLOW;
+}
+
+export function selectUseOnePreview(state: CmsConfig) {
+  return state.publish_mode === ONE_PREVIEW;
+}
+
+export function selectPreviewBranch(state: CmsConfig) {
+  return state.preview_branch || 'preview';
 }
 
 export default config;
