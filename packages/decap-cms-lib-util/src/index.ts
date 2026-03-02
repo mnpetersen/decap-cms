@@ -76,6 +76,9 @@ import type {
   Config as C,
   UnpublishedEntryMediaFile as UEMF,
   DataFile as DF,
+  BackendPrimitives as BP,
+  FileDiff as FD,
+  GitPR as GPR,
 } from './implementation';
 import type { AsyncLock as AL } from './asyncLock';
 
@@ -99,6 +102,9 @@ export type Config = C;
 export type FetchError = FE;
 export type PointerFile = PF;
 export type DataFile = DF;
+export type BackendPrimitives = BP;
+export type FileDiff = FD;
+export type GitPR = GPR;
 
 export const DecapCmsLibUtil = {
   APIError,
