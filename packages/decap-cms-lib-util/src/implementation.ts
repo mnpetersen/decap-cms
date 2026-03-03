@@ -249,6 +249,9 @@ export interface Implementation {
     auth: { status: boolean };
     api: { status: boolean; statusPage: string };
   }>;
+
+  getOnePreviewChanges?: () => Promise<FileDiff[]>;
+  publishOnePreview?: () => Promise<void>;
 }
 
 const MAX_CONCURRENT_DOWNLOADS = 10;
