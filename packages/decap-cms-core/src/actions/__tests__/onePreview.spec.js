@@ -121,6 +121,35 @@ describe('onePreview actions', () => {
       });
     });
 
+    it('should handle empty changes when no preview branch exists', () => {
+      const { currentBackend } = require('../../backend');
+
+      const backend = {
+        getOnePreviewChanges: jest.fn().mockResolvedValue([]),
+      };
+
+      currentBackend.mockReturnValue(backend);
+
+      const store = mockStore({
+        config: fromJS({ publish_mode: 'one_preview' }),
+        collections: fromJS({
+          posts: { name: 'posts', folder: 'content/posts' },
+        }),
+      });
+
+      return store.dispatch(actions.loadOnePreviewChanges()).then(() => {
+        const dispatched = store.getActions();
+        expect(dispatched).toHaveLength(2);
+        expect(dispatched[0]).toEqual({
+          type: 'ONE_PREVIEW_CHANGES_REQUEST',
+        });
+        expect(dispatched[1]).toEqual({
+          type: 'ONE_PREVIEW_CHANGES_SUCCESS',
+          payload: { changes: [] },
+        });
+      });
+    });
+
     it('should handle files not matching any collection', () => {
       const { currentBackend } = require('../../backend');
 
@@ -180,6 +209,24 @@ describe('onePreview actions', () => {
         expect(dispatched[2]).toEqual({
           type: 'ONE_PREVIEW_PUBLISH_SUCCESS',
         });
+      });
+    });
+
+    it('should call backend.publishOnePreview', () => {
+      const { currentBackend } = require('../../backend');
+
+      const backend = {
+        publishOnePreview: jest.fn().mockResolvedValue(),
+      };
+
+      currentBackend.mockReturnValue(backend);
+
+      const store = mockStore({
+        config: fromJS({ publish_mode: 'one_preview' }),
+      });
+
+      return store.dispatch(actions.publishOnePreview()).then(() => {
+        expect(backend.publishOnePreview).toHaveBeenCalledTimes(1);
       });
     });
 

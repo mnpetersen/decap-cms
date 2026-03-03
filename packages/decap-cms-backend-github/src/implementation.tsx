@@ -134,8 +134,9 @@ export default class GitHub implements Implementation {
     this.useGraphql = config.backend.use_graphql || false;
     this.mediaFolder = config.media_folder;
     this.previewContext = config.backend.preview_context || '';
-    this.useOnePreview = (options as Record<string, unknown>).useOnePreview as boolean || false;
-    this.previewBranch = (options as Record<string, unknown>).previewBranch as string || 'preview';
+    this.useOnePreview = ((options as Record<string, unknown>).useOnePreview as boolean) || false;
+    this.previewBranch =
+      ((options as Record<string, unknown>).previewBranch as string) || 'preview';
     this.lock = asyncLock();
   }
 
