@@ -135,6 +135,7 @@ class Header extends React.Component {
     onLogoutClick: PropTypes.func.isRequired,
     openMediaLibrary: PropTypes.func.isRequired,
     hasWorkflow: PropTypes.bool.isRequired,
+    hasOnePreview: PropTypes.bool,
     displayUrl: PropTypes.string,
     logoUrl: PropTypes.string, // Deprecated, replaced by `logo.src`
     logo: PropTypes.shape({
@@ -175,6 +176,7 @@ class Header extends React.Component {
       onLogoutClick,
       openMediaLibrary,
       hasWorkflow,
+      hasOnePreview,
       displayUrl,
       logoUrl, // Deprecated, replaced by `logo.src`
       logo,
@@ -214,6 +216,14 @@ class Header extends React.Component {
                   <AppHeaderNavLink to="/workflow" activeClassName="header-link-active">
                     <Icon type="workflow" />
                     {t('app.header.workflow')}
+                  </AppHeaderNavLink>
+                </li>
+              )}
+              {hasOnePreview && (
+                <li>
+                  <AppHeaderNavLink to="/preview-changes" activeClassName="header-link-active">
+                    <Icon type="workflow" />
+                    {t('app.header.previewChanges')}
                   </AppHeaderNavLink>
                 </li>
               )}

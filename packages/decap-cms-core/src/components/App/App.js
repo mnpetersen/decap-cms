@@ -15,9 +15,10 @@ import { openMediaLibrary } from '../../actions/mediaLibrary';
 import MediaLibrary from '../MediaLibrary/MediaLibrary';
 import { Notifications } from '../UI';
 import { history } from '../../routing/history';
-import { SIMPLE, EDITORIAL_WORKFLOW } from '../../constants/publishModes';
+import { SIMPLE, EDITORIAL_WORKFLOW, ONE_PREVIEW } from '../../constants/publishModes';
 import Collection from '../Collection/Collection';
 import Workflow from '../Workflow/Workflow';
+import PreviewChanges from '../PreviewChanges/PreviewChanges';
 import Editor from '../Editor/Editor';
 import NotFoundPage from './NotFoundPage';
 import Header from './Header';
@@ -78,7 +79,7 @@ class App extends React.Component {
     logoutUser: PropTypes.func.isRequired,
     user: PropTypes.object,
     isFetching: PropTypes.bool.isRequired,
-    publishMode: PropTypes.oneOf([SIMPLE, EDITORIAL_WORKFLOW]),
+    publishMode: PropTypes.oneOf([SIMPLE, EDITORIAL_WORKFLOW, ONE_PREVIEW]),
     siteId: PropTypes.string,
     useMediaLibrary: PropTypes.bool,
     openMediaLibrary: PropTypes.func.isRequired,
@@ -176,6 +177,7 @@ class App extends React.Component {
 
     const defaultPath = getDefaultPath(collections);
     const hasWorkflow = publishMode === EDITORIAL_WORKFLOW;
+    const hasOnePreview = publishMode === ONE_PREVIEW;
 
     return (
       <>
@@ -187,6 +189,7 @@ class App extends React.Component {
           onLogoutClick={logoutUser}
           openMediaLibrary={openMediaLibrary}
           hasWorkflow={hasWorkflow}
+          hasOnePreview={hasOnePreview}
           displayUrl={config.display_url}
           logoUrl={config.logo_url} // Deprecated, replaced by `logo.src`
           logo={config.logo}
@@ -211,6 +214,9 @@ class App extends React.Component {
               to={defaultPath}
             />
             {hasWorkflow ? <Route path="/workflow" component={Workflow} /> : null}
+            {hasOnePreview ? (
+              <Route path="/preview-changes" component={PreviewChanges} />
+            ) : null}
             <RouteInCollection
               exact
               collections={collections}
