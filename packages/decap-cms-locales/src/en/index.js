@@ -19,6 +19,7 @@ const en = {
     header: {
       content: 'Contents',
       workflow: 'Workflow',
+      previewChanges: 'Preview Changes',
       media: 'Media',
       quickAdd: 'Quick add',
     },
@@ -327,6 +328,15 @@ const en = {
       readyHeader: 'Ready',
       currentEntries: '%{smart_count} entry |||| %{smart_count} entries',
     },
+  },
+  previewChanges: {
+    title: 'Preview Changes',
+    publish: 'Publish All Changes',
+    publishing: 'Publishing...',
+    publishConfirm:
+      'Are you sure you want to publish all preview changes to the main branch?',
+    loading: 'Loading changes...',
+    noChanges: 'No pending changes to publish.',
   },
 };
 

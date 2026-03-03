@@ -2,6 +2,29 @@ import { Cursor, CURSOR_COMPATIBILITY_SYMBOL } from 'decap-cms-lib-util';
 
 import GitHubImplementation from '../implementation';
 
+// Mock GitHubPrimitives
+const mockBranchExists = jest.fn();
+const mockGetBranchSHA = jest.fn();
+const mockCreateBranch = jest.fn();
+const mockCommitToBranch = jest.fn();
+const mockDiffBranches = jest.fn();
+const mockCreatePR = jest.fn();
+const mockMergePR = jest.fn();
+const mockRebaseBranch = jest.fn();
+
+jest.mock('../GitHubPrimitives', () => {
+  return jest.fn().mockImplementation(() => ({
+    branchExists: mockBranchExists,
+    getBranchSHA: mockGetBranchSHA,
+    createBranch: mockCreateBranch,
+    commitToBranch: mockCommitToBranch,
+    diffBranches: mockDiffBranches,
+    createPR: mockCreatePR,
+    mergePR: mockMergePR,
+    rebaseBranch: mockRebaseBranch,
+  }));
+});
+
 jest.spyOn(console, 'error').mockImplementation(() => {});
 
 describe('github backend implementation', () => {
@@ -355,6 +378,200 @@ describe('github backend implementation', () => {
       expect(result).toEqual({
         entries: expectedEntries,
         cursor: expectedCursor,
+      });
+    });
+  });
+
+  describe('one_preview mode', () => {
+    const onePreviewConfig = {
+      backend: {
+        repo: 'owner/repo',
+        open_authoring: false,
+        api_root: 'https://api.github.com',
+      },
+    };
+
+    const onePreviewOptions = {
+      useOnePreview: true,
+      previewBranch: 'preview',
+    };
+
+    beforeEach(() => {
+      mockBranchExists.mockReset();
+      mockGetBranchSHA.mockReset();
+      mockCreateBranch.mockReset();
+      mockCommitToBranch.mockReset();
+      mockDiffBranches.mockReset();
+      mockCreatePR.mockReset();
+      mockMergePR.mockReset();
+      mockRebaseBranch.mockReset();
+    });
+
+    describe('constructor', () => {
+      it('should store useOnePreview and previewBranch from options', () => {
+        const impl = new GitHubImplementation(onePreviewConfig, onePreviewOptions);
+        expect(impl.useOnePreview).toBe(true);
+        expect(impl.previewBranch).toBe('preview');
+      });
+
+      it('should default useOnePreview to false and previewBranch to "preview"', () => {
+        const impl = new GitHubImplementation(onePreviewConfig);
+        expect(impl.useOnePreview).toBe(false);
+        expect(impl.previewBranch).toBe('preview');
+      });
+
+      it('should use custom previewBranch when provided', () => {
+        const impl = new GitHubImplementation(onePreviewConfig, {
+          useOnePreview: true,
+          previewBranch: 'staging',
+        });
+        expect(impl.previewBranch).toBe('staging');
+      });
+    });
+
+    describe('persistEntry in one_preview mode', () => {
+      it('should commit to preview branch when useOnePreview is true', async () => {
+        const impl = new GitHubImplementation(onePreviewConfig, onePreviewOptions);
+        impl.api = {};
+
+        mockBranchExists.mockResolvedValue(true);
+        mockCommitToBranch.mockResolvedValue('abc123');
+
+        const entry = {
+          dataFiles: [{ path: 'content/posts/test.md', raw: '# Test', slug: 'test' }],
+          assets: [],
+        };
+        const options = { commitMessage: 'Create test post' };
+
+        await impl.persistEntry(entry, options);
+
+        expect(mockBranchExists).toHaveBeenCalledWith('preview');
+        expect(mockCreateBranch).not.toHaveBeenCalled();
+        expect(mockCommitToBranch).toHaveBeenCalledWith(
+          [{ path: 'content/posts/test.md', raw: '# Test' }],
+          'preview',
+          'Create test post',
+        );
+      });
+
+      it('should create preview branch if it does not exist', async () => {
+        const impl = new GitHubImplementation(onePreviewConfig, onePreviewOptions);
+        impl.api = {};
+
+        mockBranchExists.mockResolvedValue(false);
+        mockGetBranchSHA.mockResolvedValue('main-sha-123');
+        mockCreateBranch.mockResolvedValue(undefined);
+        mockCommitToBranch.mockResolvedValue('abc123');
+
+        const entry = {
+          dataFiles: [{ path: 'content/posts/test.md', raw: '# Test', slug: 'test' }],
+          assets: [],
+        };
+        const options = { commitMessage: 'Create test post' };
+
+        await impl.persistEntry(entry, options);
+
+        expect(mockBranchExists).toHaveBeenCalledWith('preview');
+        expect(mockGetBranchSHA).toHaveBeenCalledWith('master');
+        expect(mockCreateBranch).toHaveBeenCalledWith('preview', 'main-sha-123');
+        expect(mockCommitToBranch).toHaveBeenCalled();
+      });
+
+      it('should include data files and asset files', async () => {
+        const impl = new GitHubImplementation(onePreviewConfig, onePreviewOptions);
+        impl.api = {};
+
+        mockBranchExists.mockResolvedValue(true);
+        mockCommitToBranch.mockResolvedValue('abc123');
+
+        const entry = {
+          dataFiles: [{ path: 'content/posts/test.md', raw: '# Test', slug: 'test' }],
+          assets: [{ path: 'media/image.png', raw: 'binary-data' }],
+        };
+        const options = { commitMessage: 'Create test post with image' };
+
+        await impl.persistEntry(entry, options);
+
+        expect(mockCommitToBranch).toHaveBeenCalledWith(
+          [
+            { path: 'content/posts/test.md', raw: '# Test' },
+            { path: 'media/image.png', raw: 'binary-data' },
+          ],
+          'preview',
+          'Create test post with image',
+        );
+      });
+
+      it('should not route to preview branch when useOnePreview is false', async () => {
+        const impl = new GitHubImplementation(onePreviewConfig);
+        const persistFiles = jest.fn().mockResolvedValue(undefined);
+        impl.api = { persistFiles };
+
+        const entry = {
+          dataFiles: [{ path: 'content/posts/test.md', raw: '# Test', slug: 'test' }],
+          assets: [],
+        };
+        const options = { commitMessage: 'Create test post' };
+
+        await impl.persistEntry(entry, options);
+
+        expect(persistFiles).toHaveBeenCalledWith(entry.dataFiles, entry.assets, options);
+        expect(mockCommitToBranch).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('getOnePreviewChanges', () => {
+      it('should return diffs when preview branch exists', async () => {
+        const impl = new GitHubImplementation(onePreviewConfig, onePreviewOptions);
+        impl.api = {};
+
+        const diffs = [
+          { path: 'content/posts/test.md', newFile: true, deleted: false, renamed: false },
+        ];
+        mockBranchExists.mockResolvedValue(true);
+        mockDiffBranches.mockResolvedValue(diffs);
+
+        const result = await impl.getOnePreviewChanges();
+
+        expect(result).toEqual(diffs);
+        expect(mockBranchExists).toHaveBeenCalledWith('preview');
+        expect(mockDiffBranches).toHaveBeenCalledWith('preview', 'master');
+      });
+
+      it('should return empty array when preview branch does not exist', async () => {
+        const impl = new GitHubImplementation(onePreviewConfig, onePreviewOptions);
+        impl.api = {};
+
+        mockBranchExists.mockResolvedValue(false);
+
+        const result = await impl.getOnePreviewChanges();
+
+        expect(result).toEqual([]);
+        expect(mockBranchExists).toHaveBeenCalledWith('preview');
+        expect(mockDiffBranches).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('publishOnePreview', () => {
+      it('should create PR, merge, and rebase preview branch', async () => {
+        const impl = new GitHubImplementation(onePreviewConfig, onePreviewOptions);
+        impl.api = {};
+
+        const pr = { number: 42, head: 'sha-abc', labels: [] };
+        mockCreatePR.mockResolvedValue(pr);
+        mockMergePR.mockResolvedValue(undefined);
+        mockRebaseBranch.mockResolvedValue(undefined);
+
+        await impl.publishOnePreview();
+
+        expect(mockCreatePR).toHaveBeenCalledWith(
+          'preview',
+          'master',
+          'Publish preview changes',
+          'Automated publish from Decap CMS one_preview mode',
+        );
+        expect(mockMergePR).toHaveBeenCalledWith(pr);
+        expect(mockRebaseBranch).toHaveBeenCalledWith('preview', 'master');
       });
     });
   });

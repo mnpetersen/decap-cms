@@ -21,7 +21,7 @@ import { basename, join, extname, dirname } from 'path';
 import { stringTemplate } from 'decap-cms-lib-widgets';
 
 import { resolveFormat } from './formats/formats';
-import { selectUseWorkflow } from './reducers/config';
+import { selectUseWorkflow, selectUseOnePreview, selectPreviewBranch } from './reducers/config';
 import { selectMediaFilePath, selectEntry } from './reducers/entries';
 import { selectIntegration } from './reducers/integrations';
 import {
@@ -289,6 +289,8 @@ interface PersistArgs {
 
 interface ImplementationInitOptions {
   useWorkflow: boolean;
+  useOnePreview?: boolean;
+  previewBranch?: string;
   updateUserCredentials: (credentials: Credentials) => void;
   initialWorkflowStatus: string;
 }
@@ -360,6 +362,8 @@ export class Backend {
     this.config = config;
     this.implementation = implementation.init(this.config, {
       useWorkflow: selectUseWorkflow(this.config),
+      useOnePreview: selectUseOnePreview(this.config),
+      previewBranch: selectPreviewBranch(this.config),
       updateUserCredentials: this.updateUserCredentials,
       initialWorkflowStatus: status.first(),
     });
@@ -1321,6 +1325,14 @@ export class Backend {
 
   deleteUnpublishedEntry(collection: string, slug: string) {
     return this.implementation.deleteUnpublishedEntry!(collection, slug);
+  }
+
+  async getOnePreviewChanges() {
+    return this.implementation.getOnePreviewChanges!();
+  }
+
+  async publishOnePreview() {
+    return this.implementation.publishOnePreview!();
   }
 
   entryToRaw(collection: Collection, entry: EntryMap): string {

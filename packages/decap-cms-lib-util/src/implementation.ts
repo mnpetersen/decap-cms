@@ -135,6 +135,50 @@ export type Config = {
   site_id?: string;
 };
 
+export interface FileDiff {
+  path: string;
+  oldPath?: string;
+  newFile: boolean;
+  deleted: boolean;
+  renamed: boolean;
+}
+
+export interface GitPR {
+  number: number;
+  head: string;
+  labels?: string[];
+}
+
+export interface BackendPrimitives {
+  /** Commit file changes to a specific branch */
+  commitToBranch(
+    files: { path: string; raw: string | null; sha?: string | null }[],
+    branch: string,
+    message: string,
+  ): Promise<string>; // returns commit SHA
+
+  /** Create a pull request from head branch to base branch */
+  createPR(head: string, base: string, title: string, body: string): Promise<GitPR>;
+
+  /** Merge an existing pull request */
+  mergePR(pr: GitPR): Promise<void>;
+
+  /** Get file differences between two branches */
+  diffBranches(head: string, base: string): Promise<FileDiff[]>;
+
+  /** Rebase a branch onto another branch */
+  rebaseBranch(branch: string, onto: string): Promise<void>;
+
+  /** Check if a branch exists */
+  branchExists(branch: string): Promise<boolean>;
+
+  /** Create a branch from a given ref */
+  createBranch(branch: string, fromRef: string): Promise<void>;
+
+  /** Get the HEAD SHA of a branch */
+  getBranchSHA(branch: string): Promise<string>;
+}
+
 export interface Implementation {
   authComponent: () => void;
   restoreUser: (user: User) => Promise<User>;
@@ -205,6 +249,9 @@ export interface Implementation {
     auth: { status: boolean };
     api: { status: boolean; statusPage: string };
   }>;
+
+  getOnePreviewChanges?: () => Promise<FileDiff[]>;
+  publishOnePreview?: () => Promise<void>;
 }
 
 const MAX_CONCURRENT_DOWNLOADS = 10;
