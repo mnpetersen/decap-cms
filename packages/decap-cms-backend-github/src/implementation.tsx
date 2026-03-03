@@ -25,6 +25,7 @@ import {
 import AuthenticationPage from './AuthenticationPage';
 import API, { API_NAME } from './API';
 import GraphQLAPI from './GraphQLAPI';
+import GitHubPrimitives from './GitHubPrimitives';
 
 import type { Endpoints } from '@octokit/types';
 import type {
@@ -39,6 +40,7 @@ import type {
   ImplementationFile,
   UnpublishedEntryMediaFile,
   Entry,
+  FileDiff,
 } from 'decap-cms-lib-util';
 import type { Semaphore } from 'semaphore';
 
@@ -85,6 +87,8 @@ export default class GitHub implements Implementation {
   useGraphql: boolean;
   baseUrl?: string;
   bypassWriteAccessCheckForAppTokens = false;
+  useOnePreview: boolean;
+  previewBranch: string;
   _currentUserPromise?: Promise<GitHubUser>;
   _userIsOriginMaintainerPromises?: {
     [key: string]: Promise<boolean>;
@@ -130,6 +134,8 @@ export default class GitHub implements Implementation {
     this.useGraphql = config.backend.use_graphql || false;
     this.mediaFolder = config.media_folder;
     this.previewContext = config.backend.preview_context || '';
+    this.useOnePreview = (options as Record<string, unknown>).useOnePreview as boolean || false;
+    this.previewBranch = (options as Record<string, unknown>).previewBranch as string || 'preview';
     this.lock = asyncLock();
   }
 
@@ -536,12 +542,44 @@ export default class GitHub implements Implementation {
   }
 
   persistEntry(entry: Entry, options: PersistOptions) {
+    if (this.useOnePreview) {
+      return runWithLock(
+        this.lock,
+        () => this.persistToPreviewBranch(entry, options),
+        'Failed to acquire persist entry lock',
+      );
+    }
     // persistEntry is a transactional operation
     return runWithLock(
       this.lock,
       () => this.api!.persistFiles(entry.dataFiles, entry.assets, options),
       'Failed to acquire persist entry lock',
     );
+  }
+
+  private async persistToPreviewBranch(entry: Entry, options: PersistOptions) {
+    const primitives = new GitHubPrimitives(this.api!);
+    const exists = await primitives.branchExists(this.previewBranch);
+    if (!exists) {
+      const mainSHA = await primitives.getBranchSHA(this.branch);
+      await primitives.createBranch(this.previewBranch, mainSHA);
+    }
+
+    const files: { path: string; raw: string | null }[] = [];
+
+    // Add data files
+    for (const dataFile of entry.dataFiles) {
+      files.push({ path: dataFile.path, raw: dataFile.raw });
+    }
+
+    // Add asset files
+    for (const asset of entry.assets) {
+      const raw = asset.raw !== undefined ? (asset.raw as string) : null;
+      files.push({ path: asset.path, raw });
+    }
+
+    const commitMessage = options.commitMessage || 'Update from Decap CMS';
+    await primitives.commitToBranch(files, this.previewBranch, commitMessage);
   }
 
   async persistMedia(mediaFile: AssetProxy, options: PersistOptions) {
@@ -722,5 +760,26 @@ export default class GitHub implements Implementation {
       () => this.api!.publishUnpublishedEntry(collection, slug),
       'Failed to acquire publish entry lock',
     );
+  }
+
+  async getOnePreviewChanges(): Promise<FileDiff[]> {
+    const primitives = new GitHubPrimitives(this.api!);
+    const exists = await primitives.branchExists(this.previewBranch);
+    if (!exists) {
+      return [];
+    }
+    return primitives.diffBranches(this.previewBranch, this.branch);
+  }
+
+  async publishOnePreview(): Promise<void> {
+    const primitives = new GitHubPrimitives(this.api!);
+    const pr = await primitives.createPR(
+      this.previewBranch,
+      this.branch,
+      'Publish preview changes',
+      'Automated publish from Decap CMS one_preview mode',
+    );
+    await primitives.mergePR(pr);
+    await primitives.rebaseBranch(this.previewBranch, this.branch);
   }
 }
