@@ -39,6 +39,7 @@ import type {
   Config,
   ImplementationFile,
   DisplayURLObject,
+  FileDiff,
 } from 'decap-cms-lib-util';
 
 const STATUS_PAGE = 'https://www.netlifystatus.com';
@@ -153,19 +154,27 @@ export default class GitGateway implements Implementation {
   acceptRoles?: string[];
   tokenPromise?: () => Promise<string>;
   _largeMediaClientPromise?: Promise<Client>;
+  useOnePreview: boolean;
+  previewBranch: string;
 
   options: {
     proxied: boolean;
     API: GitHubAPI | GitLabAPI | BitBucketAPI | null;
     initialWorkflowStatus: string;
+    useOnePreview: boolean;
+    previewBranch: string;
   };
   constructor(config: Config, options = {}) {
     this.options = {
       proxied: true,
       API: null,
       initialWorkflowStatus: '',
+      useOnePreview: false,
+      previewBranch: 'preview',
       ...options,
     };
+    this.useOnePreview = this.options.useOnePreview;
+    this.previewBranch = this.options.previewBranch;
     this.config = config;
     this.branch = config.backend.branch?.trim() || 'master';
     this.squashMerges = config.backend.squash_merges || false;
@@ -641,5 +650,11 @@ export default class GitGateway implements Implementation {
   }
   traverseCursor(cursor: Cursor, action: string) {
     return this.backend!.traverseCursor!(cursor, action);
+  }
+  getOnePreviewChanges(): Promise<FileDiff[]> {
+    return this.backend!.getOnePreviewChanges!();
+  }
+  publishOnePreview(): Promise<void> {
+    return this.backend!.publishOnePreview!();
   }
 }
